@@ -2,45 +2,61 @@ import axios from "axios";
 import { api, setAxiosInterceptors } from "./apiHelper";
 import { signOut } from "next-auth/react";
 
-const handleApiError = (error: any, signal: AbortSignal) => {
-  if (error.response) {
-    const { status, data } = error.response;
-    console.error(
-      `Response error: Status ${status}, API called: ${
-        error.config.url
-      }, data: ${JSON.stringify(
-        data
-      )}, Response error: Status ${status},  API called: ${error.config.url}`
-    );
+interface ApiErrorResponse {
+  detail?: string;
+  error?: string;
+  [key: string]: unknown;
+}
 
-    if (status === 401) {
-      console.log("User is unauthorized, signing out...");
-      signOut({ redirect: false });
+const handleApiError = (error: unknown) => {
+  if (axios.isAxiosError<ApiErrorResponse>(error)) {
+    const { response, request, message, config } = error;
+
+    if (response) {
+      const { status, data } = response;
+      console.error(
+        `Response error: Status ${status}, API called: ${
+          config?.url
+        }, data: ${JSON.stringify(data)}`
+      );
+
+      if (status === 401) {
+        console.log("User is unauthorized, signing out...");
+        signOut({ redirect: false });
+      }
+
+      return {
+        data:
+          data?.detail ||
+          data?.error ||
+          "We encountered an issue on our end. Please try again!",
+        status: "error" as const,
+        code: status,
+      };
+    } else if (request) {
+      console.error("No response received:", request);
+      return {
+        data: "No response received from the server",
+        status: "error" as const,
+        code: 503,
+      };
+    } else {
+      console.error("Error in setting up the request:", message);
+      return {
+        data: "Error in setting up the request",
+        status: "error" as const,
+        code: 500,
+      };
     }
-
-    return {
-      data:
-        data?.detail ||
-        data?.error ||
-        "We encountered an issue on our end. Please try again!",
-      status: "error",
-      code: status,
-    };
-  } else if (error.request) {
-    console.error("No response received:", error.request);
-    return {
-      data: "No response received from the server",
-      status: "error",
-      code: 503,
-    };
-  } else {
-    console.error("Error in setting up the request:", error.message);
-    return {
-      data: "Error in setting up the request",
-      status: "error",
-      code: 500,
-    };
   }
+
+  // If it's not an AxiosError, treat it as an unknown error
+  console.error("Unexpected error:", error);
+  return {
+    data: "An unexpected error occurred",
+    status: "error" as const,
+    code: 500,
+  };
 };
 
 export const requestOtpAPI = async (
@@ -52,9 +68,9 @@ export const requestOtpAPI = async (
     const response = await axios.post(url, payload, { signal });
     if (response.status >= 200 && response.status < 300) {
       return { data: response.data, status: "success" };
-    } else return handleApiError(response, signal);
+    } else return handleApiError(response);
   } catch (error) {
-    return handleApiError(error, signal);
+    return handleApiError(error);
   }
 };
 
@@ -85,7 +101,7 @@ export async function verifyOtpAPI(
     }
     return { data: response.data, status: "error" };
   } catch (error) {
-    return handleApiError(error, signal);
+    return handleApiError(error);
   }
 }
 
@@ -100,9 +116,9 @@ export const getSmbInfo = async (
     const response = await axios.post(url, payload, { signal });
     if (response.status >= 200 && response.status < 300) {
       return { data: response.data, status: "success" };
-    } else return handleApiError(response, signal);
+    } else return handleApiError(response);
   } catch (error) {
-    return handleApiError(error, signal);
+    return handleApiError(error);
   }
 };
 export const getRefreshAccessToken = async (
@@ -114,8 +130,8 @@ export const getRefreshAccessToken = async (
     const response = await api.post(url, { refresh }, { signal });
     if (response.status >= 200 && response.status < 300) {
       return { data: response.data, status: "success" };
-    } else return handleApiError(response, signal);
+    } else return handleApiError(response);
   } catch (error) {
-    return handleApiError(error, signal);
+    return handleApiError(error);
   }
 };

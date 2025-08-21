@@ -1,5 +1,4 @@
-import NextAuth, { DefaultSession, DefaultUser } from "next-auth";
-import { JWT } from "next-auth/jwt";
+import { DefaultSession, DefaultUser } from "next-auth";
 
 declare module "next-auth" {
   interface Session {
@@ -7,14 +6,14 @@ declare module "next-auth" {
     refreshToken: string;
     error?: string;
     user: DefaultSession["user"] & {
-      raw?: any;
+      raw?: unknown; // safer than `any`
     };
   }
 
   interface User extends DefaultUser {
     accessToken: string;
     refreshToken: string;
-    raw?: any;
+    raw?: unknown;
   }
 }
 
@@ -24,6 +23,6 @@ declare module "next-auth/jwt" {
     refreshToken: string;
     accessTokenExpires: number;
     error?: string;
-    raw?: any;
+    raw?: unknown;
   }
 }

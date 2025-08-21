@@ -1,9 +1,11 @@
+// ./src/lib/auth.ts (example path)
 import CredentialsProvider from "next-auth/providers/credentials";
-import type { NextAuthOptions } from "next-auth";
+import type { NextAuthOptions, User } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 import { jwtDecode } from "jwt-decode";
 import { verifyOtpAPI, getRefreshAccessToken } from "./api";
 
-const refreshAccessToken = async (token: any): Promise<any> => {
+const refreshAccessToken = async (token: JWT): Promise<JWT> => {
   try {
     const res = await getRefreshAccessToken(token.refreshToken);
 
@@ -38,7 +40,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "text" },
         otp_code: { label: "OTP Code", type: "text" },
       },
-      async authorize(credentials): Promise<any> {
+      async authorize(credentials): Promise<User | null> {
         if (!credentials) return null;
 
         try {
@@ -59,15 +61,18 @@ export const authOptions: NextAuthOptions = {
             refreshToken: res.data.refresh,
             raw: res.data,
           };
-        } catch (error: any) {
-          console.error(error.message);
-          throw new Error(error.message);
+        } catch (error: unknown) {
+          if (error instanceof Error) {
+            console.error(error.message);
+            throw new Error(error.message);
+          }
+          throw new Error("Unknown authorization error");
         }
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, account, user }) {
+    async jwt({ token, account, user }): Promise<JWT> {
       // Initial sign in
       if (account && user) {
         const accessToken = user.accessToken as string | undefined;
@@ -89,12 +94,12 @@ export const authOptions: NextAuthOptions = {
       }
 
       // Return previous token if still valid
-      if (Date.now() < (token as any).accessTokenExpires) {
-        return token;
+      if (Date.now() < (token as JWT).accessTokenExpires) {
+        return token as JWT;
       }
 
       // Refresh expired token
-      return refreshAccessToken(token);
+      return refreshAccessToken(token as JWT);
     },
 
     async session({ session, token }) {
