@@ -1,20 +1,30 @@
 // axiosConfig.js
-import axios from 'axios';
-import { getSession } from 'next-auth/react';
+import axios from "axios";
+import { getSession, signOut } from "next-auth/react";
 
 // Create an Axios instance
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_PRODUCTION_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: "/api/proxy/",
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (
+      error.response?.status === 401 &&
+      error.response?.data?.error === "SessionExpired"
+    ) {
+      await signOut({ callbackUrl: "/" });
+    }
+    return Promise.reject(error);
+  }
+);
 
 let interceptorId = null;
 
 async function getToken() {
   const session = await getSession();
-  return session?.accessToken || '';
+  return session?.accessToken || "";
 }
 
 // Function to set or update the interceptor
@@ -26,7 +36,7 @@ const setAxiosInterceptors = async () => {
   }
   // Add a new interceptor and store its ID
   interceptorId = api.interceptors.request.use(
-    async config => {
+    async (config) => {
       const token = await getToken();
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -35,7 +45,7 @@ const setAxiosInterceptors = async () => {
       }
       return config;
     },
-    error => {
+    (error) => {
       return Promise.reject(error);
     }
   );

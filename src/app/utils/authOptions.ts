@@ -1,4 +1,3 @@
-// ./src/lib/auth.ts (example path)
 import CredentialsProvider from "next-auth/providers/credentials";
 import type { NextAuthOptions, User } from "next-auth";
 import type { JWT } from "next-auth/jwt";
@@ -16,7 +15,7 @@ const refreshAccessToken = async (token: JWT): Promise<JWT> => {
     return {
       ...token,
       accessToken: res.data.access,
-      refreshToken: res.data.refreshToken ?? token.refreshToken,
+      refreshToken: res.data.refreshToken,
       accessTokenExpires:
         jwtDecode<{ exp: number }>(res.data.access).exp * 1000,
       raw: res.data,

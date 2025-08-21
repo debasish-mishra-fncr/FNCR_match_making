@@ -18,7 +18,8 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-// Apply middleware to specific routes
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp)).*)",
+  ],
 };

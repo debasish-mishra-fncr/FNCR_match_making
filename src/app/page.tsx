@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { requestOtpAPI } from "./utils/api";
 import { toast } from "react-toastify";
 import { signIn } from "next-auth/react";
+import Image from "next/image";
 
 const Page = () => {
   const [step, setStep] = useState(1);
@@ -11,7 +12,6 @@ const Page = () => {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const signal = new AbortController().signal;
   const handleSendOtp = async () => {
     if (!email) {
       toast.error("Please enter your email");
@@ -19,7 +19,7 @@ const Page = () => {
     }
     setLoading(true);
     try {
-      const res = await requestOtpAPI({ email, otp_type: "EMAIL" }, signal);
+      const res = await requestOtpAPI({ email, otp_type: "EMAIL" });
       if (res.status !== "success") {
         toast.error(res.data);
         return;
@@ -70,9 +70,11 @@ const Page = () => {
       <div className="w-[90%] max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-md">
         <div className="flex flex-col items-center mb-8">
           <img
-            src="https://i.imgur.com/PVh4nsr.png"
-            alt="Logo"
-            className="w-28 mb-4"
+            src="/FNCR_logo_horizontal_theme.png"
+            alt="logo"
+            width={120}
+            height={50}
+            className="mb-4"
           />
           <h1 className="text-xl font-bold">
             {step === 1 ? "Enter your Email" : "Verify OTP"}
@@ -100,7 +102,7 @@ const Page = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-[#D7E1A4]"
               />
             </div>
             <button
@@ -109,7 +111,7 @@ const Page = () => {
               className={`w-full rounded-2xl px-4 py-2 font-medium text-black transition ${
                 loading
                   ? "bg-gray-300 cursor-not-allowed"
-                  : "bg-yellow-400 hover:bg-gray-600 hover:text-white"
+                  : "bg-[#D7E1A4] hover:bg-[#5f7967] hover:text-white"
               }`}
             >
               {loading ? "Sending OTP..." : "Proceed"}
@@ -134,7 +136,7 @@ const Page = () => {
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 required
-                className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-base tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-base tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-[#D7E1A4]"
               />
             </div>
             <button
@@ -143,7 +145,7 @@ const Page = () => {
               className={`w-full rounded-2xl px-4 py-2 font-medium text-black transition ${
                 loading
                   ? "bg-gray-300 cursor-not-allowed"
-                  : "bg-yellow-400 hover:bg-gray-600 hover:text-white"
+                  : "bg-[#D7E1A4] hover:bg-[#5f7967] hover:text-white"
               }`}
             >
               {loading ? "Verifying..." : "Verify OTP"}

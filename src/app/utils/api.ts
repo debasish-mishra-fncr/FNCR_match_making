@@ -20,11 +20,6 @@ const handleApiError = (error: unknown) => {
         }, data: ${JSON.stringify(data)}`
       );
 
-      if (status === 401) {
-        console.log("User is unauthorized, signing out...");
-        signOut({ redirect: false });
-      }
-
       return {
         data:
           data?.detail ||
@@ -59,13 +54,13 @@ const handleApiError = (error: unknown) => {
   };
 };
 
-export const requestOtpAPI = async (
-  payload: { email: string; otp_type: "EMAIL" | "PHONE" },
-  signal: AbortSignal
-) => {
+export const requestOtpAPI = async (payload: {
+  email: string;
+  otp_type: "EMAIL" | "PHONE";
+}) => {
   try {
-    const url = "/api/proxy/api/users/request-otp/";
-    const response = await axios.post(url, payload, { signal });
+    const url = "/api/users/request-otp/";
+    const response = await api.post(url, payload);
     if (response.status >= 200 && response.status < 300) {
       return { data: response.data, status: "success" };
     } else return handleApiError(response);
@@ -74,14 +69,11 @@ export const requestOtpAPI = async (
   }
 };
 
-export async function verifyOtpAPI(
-  payload: {
-    phone?: string;
-    email?: string;
-    otp_code: string;
-  },
-  signal?: AbortSignal
-) {
+export async function verifyOtpAPI(payload: {
+  phone?: string;
+  email?: string;
+  otp_code: string;
+}) {
   const baseUrl =
     typeof window === "undefined"
       ? process.env.NEXTAUTH_URL || "http://localhost:3000"
@@ -94,7 +86,7 @@ export async function verifyOtpAPI(
       url = `/api/proxy/api/users/verify-otp/`;
     }
 
-    const response = await axios.post(url, payload, { signal });
+    const response = await api.post(url, payload);
 
     if (response.status >= 200 && response.status < 300) {
       return { data: response.data, status: "success" };
@@ -105,15 +97,12 @@ export async function verifyOtpAPI(
   }
 }
 
-export const getSmbInfo = async (
-  payload: { website: string },
-  signal: AbortSignal
-) => {
+export const getSmbInfo = async (payload: { website: string }) => {
   setAxiosInterceptors();
 
   try {
-    const url = "/api/proxy/core/smbs/initiate-onboarding/";
-    const response = await axios.post(url, payload, { signal });
+    const url = "/core/smbs/initiate-onboarding/";
+    const response = await api.post(url, payload);
     if (response.status >= 200 && response.status < 300) {
       return { data: response.data, status: "success" };
     } else return handleApiError(response);
@@ -121,13 +110,86 @@ export const getSmbInfo = async (
     return handleApiError(error);
   }
 };
-export const getRefreshAccessToken = async (
-  refresh: string,
-  signal?: AbortSignal
-) => {
+export const getRefreshAccessToken = async (refresh: string) => {
   try {
-    const url = "/api/proxy/api/users/refresh_token/";
-    const response = await api.post(url, { refresh }, { signal });
+    const url = `${process.env.NEXTAUTH_URL}api/auth/token/refresh/`;
+    const response = await axios.post(url, { refresh });
+    if (response.status >= 200 && response.status < 300) {
+      return { data: response.data, status: "success" };
+    } else return handleApiError(response);
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const postBulkDocsAPI = async (payload: FormData) => {
+  setAxiosInterceptors();
+
+  try {
+    const url = `/core/documents/bulk-upload/`;
+    const response = await api.post(url, payload, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    if (response.status >= 200 && response.status < 300) {
+      return { data: response.data, status: "success" };
+    } else return handleApiError(response);
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const postSmbInfo = async (id: string | number, payload: unknown) => {
+  setAxiosInterceptors();
+
+  try {
+    const url = `/core/smbs/${id}/`;
+    const response = await api.patch(url, payload);
+
+    if (response.status >= 200 && response.status < 300) {
+      return { data: response.data, status: "success" };
+    } else {
+      return handleApiError(response);
+    }
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const processChat = async (payload: FormData) => {
+  setAxiosInterceptors();
+  try {
+    const url = "/core/deal-abstracts/process/";
+    const response = await api.post(url, payload, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    if (response.status >= 200 && response.status < 300) {
+      return { data: response.data, status: "success" };
+    } else return handleApiError(response);
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const getMatchedLendersAlgoMatch = async (payload: unknown) => {
+  try {
+    const url = `/core/matches/algorithmic-match/${payload}/`;
+    const response = await api.get(url);
+    if (response.status >= 200 && response.status < 300) {
+      return { data: response.data, status: "success" };
+    } else return handleApiError(response);
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const getCurrentUserAPI = async () => {
+  try {
+    const url = `/api/users/me/`;
+    const response = await api.get(url);
     if (response.status >= 200 && response.status < 300) {
       return { data: response.data, status: "success" };
     } else return handleApiError(response);

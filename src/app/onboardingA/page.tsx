@@ -1,24 +1,39 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { getSmbInfo } from "../utils/api";
 import { toast } from "react-toastify";
 import { FiLogOut } from "react-icons/fi";
 import { signOut } from "next-auth/react";
 import Image from "next/image";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "@/redux/store";
+import { fetchSmbInfo } from "@/redux/onboardingSlice";
 
 export default function WebsiteForm() {
   const router = useRouter();
   const [website, setWebsite] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const signal = new AbortController().signal;
+  const dispatch = useDispatch<AppDispatch>();
+  const [scrolled, setScrolled] = useState(false);
+
+  // Scroll detection for header animation
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const validateWebsite = (value: string) => {
     if (!value) return "Website URL is required";
-    const urlPattern = /^https?:\/\/.+/;
-    if (!urlPattern.test(value))
-      return "Please enter a valid URL starting with http:// or https://";
+
+    const urlPattern = /^(www\.)?[a-z0-9\-]+(\.[a-z]{2,})+.*$/i;
+
+    if (!urlPattern.test(value)) return "Please enter a valid URL";
+
     return null;
   };
 
@@ -29,23 +44,36 @@ export default function WebsiteForm() {
       setError(validationError);
       return;
     }
+
     setError(null);
     setLoading(true);
-    const res = await getSmbInfo({ website }, signal);
-    if (res.status === "success") {
-      setTimeout(() => {
-        router.push("/onboardingb");
-      }, 1000);
-    } else {
-      toast.error(res.data);
+
+    try {
+      const res = await dispatch(fetchSmbInfo(website)).unwrap();
+      if (res.error) {
+        toast.error(res.error);
+        setLoading(false);
+        return;
+      }
+      router.push("/onboardingB");
+    } catch (err: unknown) {
+      toast.error(err as string || "Failed to fetch SMB info");
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-6 shadow-sm">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+      {/* Top subtle space */}
+      <div className="sticky top-0 z-[100] h-4 bg-white/70 backdrop-blur-sm pointer-events-none"></div>
+
+      {/* Header */}
+      <header
+        className={`sticky top-4 z-[101] mx-auto max-w-6xl rounded-3xl border border-gray-200 bg-white/90 backdrop-blur-md px-6 transition-all duration-300 ${
+          scrolled ? "py-2 shadow-md" : "py-3 shadow-sm"
+        }`}
+      >
+        <div className="flex items-center justify-between">
           {/* Left: Logo */}
           <div className="flex items-center gap-4">
             <Image
@@ -59,18 +87,15 @@ export default function WebsiteForm() {
 
           {/* Right: Sign Out Button */}
           <button
-            onClick={() => {
-              signOut({
-                callbackUrl: "/",
-              });
-            }}
-            className="flex cursor-pointer items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition text-gray-700 font-medium"
+            onClick={() => signOut({ callbackUrl: "/" })}
+            className="flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-gray-700 font-medium transition hover:bg-gray-200"
           >
             <FiLogOut className="text-xl" />
             Sign Out
           </button>
         </div>
       </header>
+
       {/* Main Content */}
       <main className="p-6 lg:p-12">
         <div className="max-w-4xl mx-auto">

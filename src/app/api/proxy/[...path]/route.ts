@@ -1,30 +1,43 @@
 import axios, { AxiosError } from "axios";
 import { NextRequest } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/utils/authOptions";
 
 const API_BASE = "https://server.fncr.com";
 
 async function handleRequest(
   req: NextRequest,
   paramsPromise: Promise<{ path: string[] }>,
-  method: "GET" | "POST" | "PUT" | "DELETE"
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
 ): Promise<Response> {
   const controller = new AbortController();
   const signal = controller.signal;
 
+  const { path } = await paramsPromise;
+  const search = req.nextUrl.search || "";
+  const targetUrl = `${API_BASE}/${path.join("/")}/${search}`;
+
+  // forward all headers except host/connection
+  const headers: Record<string, string> = {};
+  req.headers.forEach((value, key) => {
+    if (key.toLowerCase() !== "host" && key.toLowerCase() !== "connection") {
+      headers[key] = value;
+    }
+  });
+  let data: unknown;
+  if (headers["content-type"] === "application/json") {
+    data = await req.json();
+  } else {
+    data = await req.arrayBuffer();
+  }
+  // Fetch access token from session
+  const session = await getServerSession(authOptions);
+  let accessToken = session?.accessToken;
+  const refreshToken = session?.refreshToken;
+
+  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+
   try {
-    // ✅ Await params before using
-    const { path } = await paramsPromise;
-    const search = req.nextUrl.search || "";
-
-    const targetUrl = `${API_BASE}/${path.join("/")}/${search}`;
-
-    const headers = {
-      "Content-Type": "application/json",
-    };
-
-    const data =
-      method !== "GET" && method !== "DELETE" ? await req.json() : undefined;
-
     const response = await axios({
       url: targetUrl,
       method,
@@ -34,7 +47,45 @@ async function handleRequest(
       validateStatus: () => true,
     });
 
-    console.log("Proxy response:", response.data);
+    console.log("Response status:", response.status);
+
+    // If 401/403, try refreshing token once
+    if ((response.status === 401 || response.status === 403) && refreshToken) {
+      console.log("Refreshing token...");
+      try {
+        const baseUrl = process.env.NEXTAUTH_URL;
+        const refreshResponse = await axios.post(
+          `${baseUrl}/api/users/refresh_token/`,
+          { refresh: refreshToken }
+        );
+
+        if (refreshResponse.status >= 200 && refreshResponse.status < 300) {
+          accessToken = refreshResponse.data.access;
+          headers["Authorization"] = `Bearer ${accessToken}`;
+
+          // Retry original request
+          const retryResponse = await axios({
+            url: targetUrl,
+            method,
+            headers,
+            data,
+            signal,
+            validateStatus: () => true,
+          });
+          return new Response(JSON.stringify(retryResponse.data), {
+            status: retryResponse.status,
+          });
+        } else {
+          return new Response(JSON.stringify({ error: "SessionExpired" }), {
+            status: 401,
+          });
+        }
+      } catch {
+        return new Response(JSON.stringify({ error: "SessionExpired" }), {
+          status: 401,
+        });
+      }
+    }
 
     return new Response(JSON.stringify(response.data), {
       status: response.status,
@@ -42,9 +93,7 @@ async function handleRequest(
     });
   } catch (err: unknown) {
     const error = err as AxiosError;
-
-    console.error("Proxy error:", error.response?.data || error.message);
-
+    console.log("Error:", error.response?.data);
     return new Response(
       JSON.stringify(
         (error.response?.data as object) || { message: "Proxy request failed" }
@@ -57,6 +106,7 @@ async function handleRequest(
   }
 }
 
+// Export HTTP methods
 export async function GET(
   req: NextRequest,
   ctx: { params: Promise<{ path: string[] }> }
@@ -83,4 +133,11 @@ export async function DELETE(
   ctx: { params: Promise<{ path: string[] }> }
 ) {
   return handleRequest(req, ctx.params, "DELETE");
+}
+
+export async function PATCH(
+  req: NextRequest,
+  ctx: { params: Promise<{ path: string[] }> }
+) {
+  return handleRequest(req, ctx.params, "PATCH");
 }

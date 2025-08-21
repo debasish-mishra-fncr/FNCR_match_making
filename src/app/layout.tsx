@@ -2,6 +2,7 @@ import "./globals.css";
 import { Metadata } from "next";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Providers } from "@/providers/ReduxProvider";
 
 export const metadata: Metadata = {
   title: "SMB Assessment Platform",
@@ -16,7 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-gray-50">
-        {children}
+        <Providers>{children}</Providers>
         <ToastContainer
           position="bottom-center"
           autoClose={3000}
