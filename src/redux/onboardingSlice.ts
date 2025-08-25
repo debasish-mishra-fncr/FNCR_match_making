@@ -18,7 +18,7 @@ export const FUNDING_AMOUNTS: FundingAmount[] = [
 
 export interface FileWithMetadata {
   name: string;
-  file:File;
+  file: File;
   metadata: {
     document_purpose: string;
     description: string;
@@ -107,8 +107,6 @@ export const fetchSmbInfo = createAsyncThunk(
 
 // Selector to build API payload
 const buildSmbOnboardingPayload = (state: SMBOnboardingState) => {
-  console.log("Building payload from onboarding state:", state);
-
   const isNonEmptyString = (v: any) => typeof v === "string" && v.trim() !== "";
   const isNonNull = (v: any) => v !== null && v !== undefined;
   const isNonEmptyArray = (v: any) => Array.isArray(v) && v.length > 0;
