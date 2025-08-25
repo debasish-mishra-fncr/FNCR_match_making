@@ -194,7 +194,19 @@ export default function OnboardingB() {
 
         const formData = new FormData();
         formData.append("user_message", JSON.stringify(prompt));
-        await processChat(formData);
+        onboardingState.smbDocs.forEach((doc) => {
+          formData.append("attachments", doc.file);
+        });
+        const resChat = await processChat(formData);
+        if (resChat.status !== "success") {
+          setApiLoading(false);
+          toast.error("Error generating matches");
+          return;
+        } else {
+          setApiLoading(false);
+          toast.success("Matches generated successfully");
+          router.push("/matches");
+        }
       } catch (error) {
         setApiLoading(false);
         console.error("Error generating deal abstract:", error);

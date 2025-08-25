@@ -57,7 +57,7 @@ export default function WebsiteForm() {
       }
       router.push("/onboardingB");
     } catch (err: unknown) {
-      toast.error(err as string || "Failed to fetch SMB info");
+      toast.error((err as string) || "Failed to fetch SMB info");
       setLoading(false);
     }
   };
@@ -69,7 +69,7 @@ export default function WebsiteForm() {
 
       {/* Header */}
       <header
-        className={`sticky top-4 z-[101] mx-auto max-w-6xl rounded-3xl border border-gray-200 bg-white/90 backdrop-blur-md px-6 transition-all duration-300 ${
+        className={`sticky top-4 z-[101] mx-6 lg:mx-auto max-w-6xl rounded-3xl border border-gray-200 bg-white/90 backdrop-blur-md px-6 transition-all duration-300 ${
           scrolled ? "py-2 shadow-md" : "py-3 shadow-sm"
         }`}
       >
