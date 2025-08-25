@@ -127,11 +127,7 @@ export const postBulkDocsAPI = async (payload: FormData) => {
 
   try {
     const url = `/core/documents/bulk-upload/`;
-    const response = await api.post(url, payload, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await api.post(url, payload);
     if (response.status >= 200 && response.status < 300) {
       return { data: response.data, status: "success" };
     } else return handleApiError(response);
@@ -161,11 +157,7 @@ export const processChat = async (payload: FormData) => {
   setAxiosInterceptors();
   try {
     const url = "/core/deal-abstracts/process/";
-    const response = await api.post(url, payload, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await api.post(url, payload);
     if (response.status >= 200 && response.status < 300) {
       return { data: response.data, status: "success" };
     } else return handleApiError(response);
