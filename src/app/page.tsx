@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { requestOtpAPI } from "./utils/api";
 import { toast } from "react-toastify";
 import { signIn } from "next-auth/react";
-import Image from "next/image";
 
 const Page = () => {
   const [step, setStep] = useState(1);
@@ -57,7 +56,7 @@ const Page = () => {
         return;
       }
 
-      router.push("/onboardingA");
+      router.push("/onboarding");
     } catch (error) {
       toast.error("Verification failed");
     } finally {
@@ -79,11 +78,6 @@ const Page = () => {
           <h1 className="text-xl font-bold">
             {step === 1 ? "Enter your Email" : "Verify OTP"}
           </h1>
-          <p className="text-gray-600 text-sm">
-            {step === 1
-              ? "We will send you an OTP to login."
-              : `Enter the 6-digit OTP sent to ${email}`}
-          </p>
         </div>
 
         {step === 1 && (
