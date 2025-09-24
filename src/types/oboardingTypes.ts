@@ -171,3 +171,12 @@ export interface StepProps {
   onNext: () => void;
   onBack: () => void;
 }
+
+export interface FileWithMetadata {
+  name: string;
+  file: File;
+  metadata: {
+    document_purpose: string;
+    description: string;
+  };
+}

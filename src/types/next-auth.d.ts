@@ -6,7 +6,7 @@ declare module "next-auth" {
     refreshToken: string;
     error?: string;
     user: DefaultSession["user"] & {
-      raw?: unknown; // safer than `any`
+      raw?: unknown;
     };
   }
 
