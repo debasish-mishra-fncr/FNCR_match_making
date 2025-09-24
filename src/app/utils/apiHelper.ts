@@ -76,7 +76,7 @@ api.interceptors.response.use(
         // Refresh using refresh token
         const newToken = await refreshAccessToken(refreshToken);
         if (newToken.error) throw new Error(newToken.error);
-
+        await signOut({ callbackUrl: "/" });
         accessToken = newToken.accessToken;
         refreshToken = newToken.refreshToken;
         processQueue(null, accessToken);
