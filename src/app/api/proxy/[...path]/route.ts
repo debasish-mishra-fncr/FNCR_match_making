@@ -3,59 +3,58 @@ import { NextRequest } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/utils/authOptions";
 
-const API_BASE = "https://server.fncr.com";
+const API_BASE = process.env.NEXT_PUBLIC_PRODUCTION_BASE_URL;
 
 async function handleRequest(
   req: NextRequest,
   paramsPromise: Promise<{ path: string[] }>,
   method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
 ): Promise<Response> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
   const { path } = await paramsPromise;
   const search = req.nextUrl.search || "";
-  const targetUrl = `${API_BASE}/${path.join("/")}/${search}`;
+  console.log("path", path, "search", search);
+  
+  const targetUrl = `${API_BASE}/${path.join("/")}${search}/`;
+  console.log("targetUrl", targetUrl);
+  const headers: Record<string, string> = {
+    "Content-Type": req.headers.get("content-type") || "application/json",
+  };
 
-  // forward all headers except host/connection
-  const headers: Record<string, string> = {};
-  req.headers.forEach((value, key) => {
-    if (key.toLowerCase() !== "host" && key.toLowerCase() !== "connection") {
-      headers[key] = value;
-    }
-  });
+  // Parse body
   let data: unknown;
-  if (headers["content-type"] === "application/json") {
-    data = await req.json();
+  if (headers["Content-Type"].includes("application/json")) {
+    data = await req.json().catch(() => ({}));
   } else {
     data = await req.arrayBuffer();
   }
-  // Fetch access token from session
+
+  // Attach access token from session
   const session = await getServerSession(authOptions);
   let accessToken = session?.accessToken;
   const refreshToken = session?.refreshToken;
 
-  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+  console.log("accessToken", accessToken);
+  console.log("refreshToken", refreshToken);
+
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
 
   try {
-    const response = await axios({
+    let response = await axios({
       url: targetUrl,
       method,
       headers,
       data,
-      signal,
       validateStatus: () => true,
     });
 
-    console.log("Response status:", response.status);
-
-    // If 401/403, try refreshing token once
+    console.log("response", response);
+    // Handle token refresh on 401/403
     if ((response.status === 401 || response.status === 403) && refreshToken) {
-      console.log("Refreshing token...");
       try {
-        const baseUrl = process.env.NEXTAUTH_URL;
         const refreshResponse = await axios.post(
-          `${baseUrl}/api/users/refresh_token/`,
+          `${API_BASE}/api/auth/token/refresh/`,
           { refresh: refreshToken }
         );
 
@@ -64,16 +63,12 @@ async function handleRequest(
           headers["Authorization"] = `Bearer ${accessToken}`;
 
           // Retry original request
-          const retryResponse = await axios({
+          response = await axios({
             url: targetUrl,
             method,
             headers,
             data,
-            signal,
             validateStatus: () => true,
-          });
-          return new Response(JSON.stringify(retryResponse.data), {
-            status: retryResponse.status,
           });
         } else {
           return new Response(JSON.stringify({ error: "SessionExpired" }), {
@@ -93,7 +88,6 @@ async function handleRequest(
     });
   } catch (err: unknown) {
     const error = err as AxiosError;
-    console.log("Error:", error.response?.data);
     return new Response(
       JSON.stringify(
         (error.response?.data as object) || { message: "Proxy request failed" }
@@ -106,7 +100,7 @@ async function handleRequest(
   }
 }
 
-// Export HTTP methods
+// Export handlers
 export async function GET(
   req: NextRequest,
   ctx: { params: Promise<{ path: string[] }> }
