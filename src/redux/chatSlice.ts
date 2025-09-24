@@ -90,7 +90,7 @@ export const fetchBotResponse = createAsyncThunk(
 
 export const fetchLenderMatch = createAsyncThunk(
   "chatbot/fetchLenderMatch",
-  async ({ smbId }: { smbId: Number }, thunkAPI) => {
+  async ({ smbId }: { smbId: number }, thunkAPI) => {
     const response = await getMatchedLendersAlgoMatch({
       smb_id: String(smbId),
     });
@@ -453,7 +453,7 @@ const chatbotSlice = createSlice({
           .map((msg: any, index: number) => {
             let text = msg.content ?? "";
             let nextSteps = [];
-            let completeness_and_engaging_score: null | Number = null;
+            let completeness_and_engaging_score: null | number = null;
             if (msg.triggered_abstraction && typeof msg.content === "string") {
               try {
                 const parsed = JSON.parse(msg.content);
