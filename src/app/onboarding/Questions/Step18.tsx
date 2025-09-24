@@ -4,7 +4,7 @@ import { useDispatch } from "react-redux";
 import { useDropzone } from "react-dropzone";
 import { AppDispatch } from "@/redux/store";
 import { updateOnboarding } from "@/redux/onboardingSlice";
-import { StepProps } from "@/types/oboardingTypes";
+import { FileWithMetadata, StepProps } from "@/types/oboardingTypes";
 import {
   AiOutlineCloudUpload,
   AiOutlineClose,
@@ -12,9 +12,8 @@ import {
   AiOutlineFileImage,
   AiOutlineWarning,
 } from "react-icons/ai";
-import { FileWithMetadata } from "@/redux/onboardingSlice";
 
-const StepIncomeStatement = ({ onNext, onBack }: StepProps) => {
+const StepDebtSchedule = ({ onNext, onBack }: StepProps) => {
   const dispatch = useDispatch<AppDispatch>();
   const [uploadedFiles, setUploadedFiles] = useState<FileWithMetadata[]>([]);
   const [comment, setComment] = useState<string>("");
@@ -29,7 +28,7 @@ const StepIncomeStatement = ({ onNext, onBack }: StepProps) => {
         name: file.name,
         file: file,
         metadata: {
-          document_purpose: "Income Statement",
+          document_purpose: "Debt Schedule",
           description: comment,
         },
       }));
@@ -57,7 +56,7 @@ const StepIncomeStatement = ({ onNext, onBack }: StepProps) => {
     });
 
   const removeFile = (fileName: string) => {
-    const updatedFiles = uploadedFiles.filter((file) => file.file.name !== fileName);
+    const updatedFiles = uploadedFiles.filter((file) => file.name !== fileName);
     handleFilesChange(updatedFiles);
   };
 
@@ -87,7 +86,6 @@ const StepIncomeStatement = ({ onNext, onBack }: StepProps) => {
     onNext();
   };
 
-  const canProceed = uploadedFiles.length > 0;
 
   return (
     <main className="p-6 lg:p-12">
@@ -103,7 +101,7 @@ const StepIncomeStatement = ({ onNext, onBack }: StepProps) => {
             transition={{ delay: 0.1 }}
             className="text-2xl lg:text-3xl font-bold text-gray-900 leading-tight"
           >
-            {"Please share your company's income statement for the last three years."}
+            {"Please share your company's debt schedule for the last three years."}
           </motion.h1>
 
           {/* File Upload Area */}
@@ -124,7 +122,7 @@ const StepIncomeStatement = ({ onNext, onBack }: StepProps) => {
               <input {...getInputProps()} />
               <AiOutlineCloudUpload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                Upload Income Statement Documents
+                Upload Debt Schedule Documents
               </h3>
               {isDragActive ? (
                 <p className="text-[#D7E1A4] font-semibold mb-4">
@@ -136,7 +134,8 @@ const StepIncomeStatement = ({ onNext, onBack }: StepProps) => {
                 </p>
               )}
               <p className="text-sm text-gray-400">
-                Accepted formats: PDF, Excel, Images • Max 5 files • 10MB per file
+                Accepted formats: PDF, Excel, Images • Max 5 files • 10MB per
+                file
               </p>
             </div>
 
@@ -225,14 +224,9 @@ const StepIncomeStatement = ({ onNext, onBack }: StepProps) => {
 
             <motion.button
               onClick={handleNext}
-              whileHover={{ scale: canProceed ? 1.02 : 1 }}
-              whileTap={{ scale: canProceed ? 0.98 : 1 }}
-              disabled={!canProceed}
-              className={`px-8 py-4 rounded-xl font-semibold transition-all duration-200 ${
-                canProceed
-                  ? "bg-[#D7E1A4] text-gray-700 hover:cursor-pointer hover:bg-[#C8D693]"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-              }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="px-8 py-4 rounded-xl font-semibold transition-all duration-200 bg-[#D7E1A4] text-gray-700 hover:cursor-pointer hover:bg-[#C8D693]"
             >
               Next Step
             </motion.button>
@@ -243,4 +237,4 @@ const StepIncomeStatement = ({ onNext, onBack }: StepProps) => {
   );
 };
 
-export default StepIncomeStatement;
+export default StepDebtSchedule;

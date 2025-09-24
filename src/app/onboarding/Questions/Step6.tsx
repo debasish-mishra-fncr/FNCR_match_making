@@ -79,7 +79,6 @@ const Step6 = ({ onNext, onBack }: StepProps) => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="px-8 py-4 rounded-xl bg-[#D7E1A4] text-gray-600 font-semibold hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={selectedReasons.length === 0}
             >
               Next Step
             </motion.button>

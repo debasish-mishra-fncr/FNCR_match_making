@@ -1,27 +1,30 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { useDispatch } from "react-redux";
-import { AppDispatch } from "@/redux/store";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/redux/store";
 import { updateOnboarding } from "@/redux/onboardingSlice";
-import { PRODUCT_CODES } from "@/types/oboardingTypes";
+import { TARGET_COMPETITIVE_ADVANTAGE_OPTIONS } from "@/types/oboardingTypes";
 import { StepProps } from "@/types/oboardingTypes";
 
-const Step7 = ({ onNext, onBack }: StepProps) => {
+const Step11 = ({ onNext, onBack }: StepProps) => {
   const dispatch = useDispatch<AppDispatch>();
-  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const onboardingState = useSelector((state: RootState) => state.onboarding);
 
-  const toggleProduct = (productKey: string) => {
-    let updatedProducts = [];
-    if (selectedProducts.includes(productKey)) {
-      updatedProducts = selectedProducts.filter((p) => p !== productKey);
-    } else {
-      updatedProducts = [...selectedProducts, productKey];
-    }
-    setSelectedProducts(updatedProducts);
+  const [selectedOptions, setSelectedOptions] = useState<string[]>(
+    onboardingState.target_competitive_advantage || []
+  );
+
+  const toggleOption = (option: string) => {
+    const updatedOptions = selectedOptions.includes(option)
+      ? selectedOptions.filter((o) => o !== option)
+      : [...selectedOptions, option];
+    setSelectedOptions(updatedOptions);
   };
 
   const handleSubmit = () => {
-    dispatch(updateOnboarding({ product: selectedProducts }));
+    dispatch(
+      updateOnboarding({ target_competitive_advantage: selectedOptions })
+    );
     onNext();
   };
 
@@ -39,23 +42,23 @@ const Step7 = ({ onNext, onBack }: StepProps) => {
             transition={{ delay: 0.1 }}
             className="text-2xl lg:text-3xl font-bold text-gray-900 leading-tight"
           >
-            Which financing options would you like to explore for your business?
+            What is most important for you in deciding amongst lender options?
           </motion.h1>
 
           <div className="mt-6 space-y-3">
-            {Object.entries(PRODUCT_CODES).map(([key, label]) => (
+            {TARGET_COMPETITIVE_ADVANTAGE_OPTIONS.map((option) => (
               <motion.button
-                key={key}
-                onClick={() => toggleProduct(key)}
+                key={option}
+                onClick={() => toggleOption(option)}
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
                 className={`w-full text-left px-4 py-4 rounded-xl border-2 text-lg transition-all duration-200 ${
-                  selectedProducts.includes(key)
+                  selectedOptions.includes(option)
                     ? "border-[#D7E1A4] bg-[#D7E1A4] text-gray-700"
                     : "border-gray-200 bg-white text-gray-900 hover:border-[#D7E1A4] hover:bg-[#F0F8C2]"
                 }`}
               >
-                {label}
+                {option}
               </motion.button>
             ))}
           </div>
@@ -73,13 +76,12 @@ const Step7 = ({ onNext, onBack }: StepProps) => {
             >
               Prev Step
             </motion.button>
-            
+
             <motion.button
               onClick={handleSubmit}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="px-8 py-4 rounded-xl bg-[#D7E1A4] text-gray-600 font-semibold hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={selectedProducts.length === 0}
             >
               Next Step
             </motion.button>
@@ -90,4 +92,4 @@ const Step7 = ({ onNext, onBack }: StepProps) => {
   );
 };
 
-export default Step7;
+export default Step11;

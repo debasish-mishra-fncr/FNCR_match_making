@@ -1,30 +1,27 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { useDispatch, useSelector } from "react-redux";
-import { AppDispatch, RootState } from "@/redux/store";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "@/redux/store";
 import { updateOnboarding } from "@/redux/onboardingSlice";
-import { TARGET_COMPETITIVE_ADVANTAGE_OPTIONS } from "@/types/oboardingTypes";
+import { COLLATERAL_CODES } from "@/types/oboardingTypes";
 import { StepProps } from "@/types/oboardingTypes";
 
-const Step11 = ({ onNext, onBack }: StepProps) => {
+const Step8 = ({ onNext, onBack }: StepProps) => {
   const dispatch = useDispatch<AppDispatch>();
-  const onboardingState = useSelector((state: RootState) => state.onboarding);
+  const [selectedCollateral, setSelectedCollateral] = useState<string[]>([]);
 
-  const [selectedOptions, setSelectedOptions] = useState<string[]>(
-    onboardingState.target_competitive_advantage || []
-  );
-
-  const toggleOption = (option: string) => {
-    const updatedOptions = selectedOptions.includes(option)
-      ? selectedOptions.filter((o) => o !== option)
-      : [...selectedOptions, option];
-    setSelectedOptions(updatedOptions);
+  const toggleCollateral = (collateralKey: string) => {
+    let updatedCollateral = [];
+    if (selectedCollateral.includes(collateralKey)) {
+      updatedCollateral = selectedCollateral.filter((c) => c !== collateralKey);
+    } else {
+      updatedCollateral = [...selectedCollateral, collateralKey];
+    }
+    setSelectedCollateral(updatedCollateral);
   };
 
   const handleSubmit = () => {
-    dispatch(
-      updateOnboarding({ target_competitive_advantage: selectedOptions })
-    );
+    dispatch(updateOnboarding({ collateral: selectedCollateral }));
     onNext();
   };
 
@@ -42,25 +39,27 @@ const Step11 = ({ onNext, onBack }: StepProps) => {
             transition={{ delay: 0.1 }}
             className="text-2xl lg:text-3xl font-bold text-gray-900 leading-tight"
           >
-            What is most important for you in deciding amongst lender options?
+            Which of the following can you put up as collateral for the loan?
           </motion.h1>
 
           <div className="mt-6 space-y-3">
-            {TARGET_COMPETITIVE_ADVANTAGE_OPTIONS.map((option) => (
-              <motion.button
-                key={option}
-                onClick={() => toggleOption(option)}
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-                className={`w-full text-left px-4 py-4 rounded-xl border-2 text-lg transition-all duration-200 ${
-                  selectedOptions.includes(option)
-                    ? "border-[#D7E1A4] bg-[#D7E1A4] text-gray-700"
-                    : "border-gray-200 bg-white text-gray-900 hover:border-[#D7E1A4] hover:bg-[#F0F8C2]"
-                }`}
-              >
-                {option}
-              </motion.button>
-            ))}
+            {Object.entries(COLLATERAL_CODES)
+              .filter(([key]) => key !== "NSPEC")
+              .map(([key, label]) => (
+                <motion.button
+                  key={key}
+                  onClick={() => toggleCollateral(key)}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  className={`w-full text-left px-4 py-4 rounded-xl border-2 text-lg transition-all duration-200 ${
+                    selectedCollateral.includes(key)
+                      ? "border-[#D7E1A4] bg-[#D7E1A4] text-gray-700"
+                      : "border-gray-200 bg-white text-gray-900 hover:border-[#D7E1A4] hover:bg-[#F0F8C2]"
+                  }`}
+                >
+                  {label}
+                </motion.button>
+              ))}
           </div>
 
           <p className="text-gray-500 text-sm mt-4 ml-1">
@@ -76,13 +75,12 @@ const Step11 = ({ onNext, onBack }: StepProps) => {
             >
               Prev Step
             </motion.button>
-
+            
             <motion.button
               onClick={handleSubmit}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="px-8 py-4 rounded-xl bg-[#D7E1A4] text-gray-600 font-semibold hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={selectedOptions.length === 0}
             >
               Next Step
             </motion.button>
@@ -93,4 +91,4 @@ const Step11 = ({ onNext, onBack }: StepProps) => {
   );
 };
 
-export default Step11;
+export default Step8;
