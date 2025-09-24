@@ -2,118 +2,73 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import type { NextAuthOptions, User } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import { jwtDecode } from "jwt-decode";
-import { verifyOtpAPI, getRefreshAccessToken } from "./api";
+import axios from "axios";
+import { BackendUser } from "@/types/authTypes";
+import { refreshAccessToken } from "./utils";
 
-const refreshAccessToken = async (token: JWT): Promise<JWT> => {
-  try {
-    const res = await getRefreshAccessToken(token.refreshToken);
+const API_BASE = process.env.NEXT_PUBLIC_PRODUCTION_BASE_URL;
 
-    if (res.status !== "success") {
-      throw new Error("Refresh AccessToken Error");
-    }
-
-    return {
-      ...token,
-      accessToken: res.data.access,
-      refreshToken: res.data.refreshToken,
-      accessTokenExpires:
-        jwtDecode<{ exp: number }>(res.data.access).exp * 1000,
-      raw: res.data,
-    };
-  } catch {
-    return {
-      ...token,
-      error: "RefreshAccessTokenError",
-    };
-  }
-};
-
+// -----------------------------
+// NextAuth Options
+// -----------------------------
 export const authOptions: NextAuthOptions = {
-  session: {
-    strategy: "jwt",
-  },
+  session: { strategy: "jwt" },
   providers: [
     CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "text" },
-        otp_code: { label: "OTP Code", type: "text" },
-      },
+      name: "OTP Login",
+      credentials: { email: {}, otp_code: {} },
       async authorize(credentials): Promise<User | null> {
         if (!credentials) return null;
+        console.log(credentials);
+        const res = await axios.post(
+          `${API_BASE}/api/users/verify-otp/`,
+          credentials
+        );
+        console.log(res);
+        const data = res.data;
 
-        try {
-          const { email, otp_code } = credentials as {
-            email: string;
-            otp_code: string;
-          };
-
-          const res = await verifyOtpAPI({ email, otp_code });
-
-          if (res.status !== "success") {
-            throw new Error(res.data);
-          }
-
-          return {
-            id: email,
-            accessToken: res.data.access,
-            refreshToken: res.data.refresh,
-            raw: res.data,
-          };
-        } catch (error: unknown) {
-          if (error instanceof Error) {
-            console.error(error.message);
-            throw new Error(error.message);
-          }
-          throw new Error("Unknown authorization error");
+        if (!data.access || !data.refresh || !data.user) {
+          throw new Error(data.error || "OTP verification failed");
         }
+
+        return {
+          id: data.user.id.toString(),
+          accessToken: data.access,
+          refreshToken: data.refresh,
+          raw: data.user as BackendUser,
+        };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, account, user }): Promise<JWT> {
-      // Initial sign in
-      if (account && user) {
-        const accessToken = user.accessToken as string | undefined;
-        const refreshToken = user.refreshToken as string | undefined;
+    async jwt({ token, user }) {
+      console.log("[JWT callback]", { token, user });
 
-        if (!accessToken) {
-          throw new Error("No access token returned from authorize");
-        }
-
-        const decodedToken = jwtDecode<{ exp: number }>(accessToken);
-
+      if (user) {
+        const decoded = jwtDecode<{ exp: number }>(user.accessToken as string);
         return {
           ...token,
-          accessToken,
-          refreshToken: refreshToken ?? "",
-          accessTokenExpires: decodedToken.exp * 1000,
+          accessToken: user.accessToken,
+          refreshToken: user.refreshToken,
+          accessTokenExpires: decoded.exp * 1000,
           raw: user.raw,
         };
       }
 
-      // Return previous token if still valid
-      if (Date.now() < (token as JWT).accessTokenExpires) {
-        return token as JWT;
-      }
+      if (Date.now() < (token as JWT).accessTokenExpires) return token as JWT;
 
-      // Refresh expired token
-      return refreshAccessToken(token as JWT);
+      return refreshAccessToken(token.refreshToken as string);
     },
 
     async session({ session, token }) {
+      console.log("[Session callback]", { session, token });
       session.accessToken = token.accessToken as string;
       session.refreshToken = token.refreshToken as string;
-      session.user = {
-        ...session.user,
-        raw: token.raw,
-      };
+      session.user = token.raw as BackendUser; // exact backend format
       if (token.error) session.error = token.error;
       return session;
     },
   },
-  pages: {
-    signOut: "/",
-  },
+  pages: { signOut: "/" },
   secret: process.env.NEXTAUTH_SECRET,
 };
