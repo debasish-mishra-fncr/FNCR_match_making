@@ -1,191 +1,206 @@
-import axios from "axios";
-import { api, setAxiosInterceptors } from "./apiHelper";
-import { signOut } from "next-auth/react";
+// api.js
+import { api } from "./apiHelper";
 
-interface ApiErrorResponse {
-  detail?: string;
-  error?: string;
-  [key: string]: unknown;
-}
+/* ---------------------------
+   Helpers
+---------------------------- */
+const handleResponse = (response: any) => {
+  if (response?.status >= 200 && response?.status < 300) {
+    return { data: response.data, status: "success" };
+  }
+  return handleApiError(response);
+};
 
-const handleApiError = (error: unknown) => {
-  if (axios.isAxiosError<ApiErrorResponse>(error)) {
-    const { response, request, message, config } = error;
-
-    if (response) {
-      const { status, data } = response;
-      console.error(
-        `Response error: Status ${status}, API called: ${
-          config?.url
-        }, data: ${JSON.stringify(data)}`
-      );
-
-      return {
-        data:
-          data?.detail ||
-          data?.error ||
-          "We encountered an issue on our end. Please try again!",
-        status: "error" as const,
-        code: status,
-      };
-    } else if (request) {
-      console.error("No response received:", request);
-      return {
-        data: "No response received from the server",
-        status: "error" as const,
-        code: 503,
-      };
-    } else {
-      console.error("Error in setting up the request:", message);
-      return {
-        data: "Error in setting up the request",
-        status: "error" as const,
-        code: 500,
-      };
-    }
+const handleApiError = (error: any) => {
+  // Cancelled request
+  if (error?.name === "CanceledError" || error?.name === "AbortError") {
+    return { data: "Request cancelled", status: "cancelled", code: 0 };
   }
 
-  // If it's not an AxiosError, treat it as an unknown error
-  console.error("Unexpected error:", error);
+  // Server responded with error
+  if (error?.response) {
+    const { status, data } = error.response;
+    return {
+      data:
+        data?.detail ||
+        data?.error ||
+        data?.non_field_errors?.[0] ||
+        "An error occurred on the server.",
+      status: "error",
+      code: status,
+    };
+  }
+
+  // No response received
+  if (error?.request) {
+    console.error("No response received:", error.request);
+    return {
+      data: "No response received from the server.",
+      status: "error",
+      code: 503,
+    };
+  }
+
+  // Request setup/unknown error
   return {
-    data: "An unexpected error occurred",
-    status: "error" as const,
+    data: "Unexpected error occurred while setting up the request.",
+    status: "error",
     code: 500,
   };
 };
 
+/* ---------------------------
+   API Calls
+---------------------------- */
+
+// Deal APIs
+export const processChat = async (payload: FormData) => {
+  try {
+    const res = await api.post("/core/deal-abstracts/process/", payload, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return handleResponse(res);
+  } catch (e) {
+    return handleApiError(e);
+  }
+};
+
+export const getCurrentDealAbstract = async () => {
+  try {
+    const res = await api.get("/core/deal-abstracts/current/");
+    return handleResponse(res);
+  } catch (e) {
+    return handleApiError(e);
+  }
+};
+
+// SMB APIs
+export const getSmbInfo = async (payload: { website: string }) => {
+  try {
+    const res = await api.post("/core/smbs/initiate-onboarding/", payload);
+    return handleResponse(res);
+  } catch (e) {
+    return handleApiError(e);
+  }
+};
+
+export const postSmbInfo = async (payload: {
+  id: string | number;
+  rest: any;
+}) => {
+  const { id, ...rest } = payload;
+  if (!id) throw new Error("ID required for postSmbInfo");
+
+  try {
+    const res = await api.patch(`/core/smbs/${id}/`, rest);
+    return handleResponse(res);
+  } catch (e) {
+    return handleApiError(e);
+  }
+};
+
+// Lender APIs
+export const getLenderInfo = async (payload: { website: string }) => {
+  try {
+    const res = await api.post("/core/lender/initiate-onboarding/", payload);
+    return handleResponse(res);
+  } catch (e) {
+    return handleApiError(e);
+  }
+};
+
+export const postLenderInfo = async (payload: { id: number; rest: any }) => {
+  const { id, ...rest } = payload;
+  if (!id) throw new Error("ID required for postLenderInfo");
+
+  try {
+    const res = await api.patch(`/core/lenders/${id}/`, rest);
+    return handleResponse(res);
+  } catch (e) {
+    return handleApiError(e);
+  }
+};
+
+// Auth APIs
 export const requestOtpAPI = async (payload: {
   email: string;
   otp_type: "EMAIL" | "PHONE";
 }) => {
   try {
-    const url = "/api/users/request-otp/";
-    const response = await api.post(url, payload);
-    if (response.status >= 200 && response.status < 300) {
-      return { data: response.data, status: "success" };
-    } else return handleApiError(response);
-  } catch (error) {
-    return handleApiError(error);
+    const res = await api.post("/api/users/request-otp/", payload);
+    return handleResponse(res);
+  } catch (e) {
+    return handleApiError(e);
   }
 };
 
-export async function verifyOtpAPI(payload: {
-  phone?: string;
-  email?: string;
+export const verifyOtpAPI = async (payload: {
+  email: string;
   otp_code: string;
-}) {
-  const baseUrl =
-    typeof window === "undefined"
-      ? process.env.NEXTAUTH_URL || "http://localhost:3000"
-      : "";
+}) => {
   try {
-    let url = "";
-    if (typeof window === "undefined") {
-      url = `${baseUrl}api/users/verify-otp/`;
-    } else {
-      url = `/api/proxy/api/users/verify-otp/`;
-    }
-
-    const response = await api.post(url, payload);
-
-    if (response.status >= 200 && response.status < 300) {
-      return { data: response.data, status: "success" };
-    }
-    return { data: response.data, status: "error" };
-  } catch (error) {
-    return handleApiError(error);
-  }
-}
-
-export const getSmbInfo = async (payload: { website: string }) => {
-  setAxiosInterceptors();
-
-  try {
-    const url = "/core/smbs/initiate-onboarding/";
-    const response = await api.post(url, payload);
-    if (response.status >= 200 && response.status < 300) {
-      return { data: response.data, status: "success" };
-    } else return handleApiError(response);
-  } catch (error) {
-    return handleApiError(error);
-  }
-};
-export const getRefreshAccessToken = async (refresh: string) => {
-  try {
-    const url = `${process.env.NEXTAUTH_URL}api/auth/token/refresh/`;
-    const response = await axios.post(url, { refresh });
-    if (response.status >= 200 && response.status < 300) {
-      return { data: response.data, status: "success" };
-    } else return handleApiError(response);
-  } catch (error) {
-    return handleApiError(error);
+    const res = await api.post("/api/users/verify-otp/", payload);
+    return handleResponse(res);
+  } catch (e) {
+    return handleApiError(e);
   }
 };
 
-export const postBulkDocsAPI = async (payload: FormData) => {
-  setAxiosInterceptors();
+export const updateCurrentUserAPI = async (payload: {
+  id: number;
+  rest: any;
+}) => {
+  const { id, ...rest } = payload;
+  if (!id) throw new Error("ID required for updateCurrentUserAPI");
 
   try {
-    const url = `/core/documents/bulk-upload/`;
-    const response = await api.post(url, payload);
-    if (response.status >= 200 && response.status < 300) {
-      return { data: response.data, status: "success" };
-    } else return handleApiError(response);
-  } catch (error) {
-    return handleApiError(error);
-  }
-};
-
-export const postSmbInfo = async (id: string | number, payload: unknown) => {
-  setAxiosInterceptors();
-
-  try {
-    const url = `/core/smbs/${id}/`;
-    const response = await api.patch(url, payload);
-
-    if (response.status >= 200 && response.status < 300) {
-      return { data: response.data, status: "success" };
-    } else {
-      return handleApiError(response);
-    }
-  } catch (error) {
-    return handleApiError(error);
-  }
-};
-
-export const processChat = async (payload: FormData) => {
-  setAxiosInterceptors();
-  try {
-    const url = "/core/deal-abstracts/process/";
-    const response = await api.post(url, payload);
-    if (response.status >= 200 && response.status < 300) {
-      return { data: response.data, status: "success" };
-    } else return handleApiError(response);
-  } catch (error) {
-    return handleApiError(error);
-  }
-};
-
-export const getMatchedLendersAlgoMatch = async (payload: unknown) => {
-  try {
-    const url = `/core/matches/algorithmic-match/${payload}/`;
-    const response = await api.get(url);
-    if (response.status >= 200 && response.status < 300) {
-      return { data: response.data, status: "success" };
-    } else return handleApiError(response);
-  } catch (error) {
-    return handleApiError(error);
+    const res = await api.patch(`/api/users/${id}/`, rest);
+    return handleResponse(res);
+  } catch (e) {
+    return handleApiError(e);
   }
 };
 
 export const getCurrentUserAPI = async () => {
   try {
-    const url = `/api/users/me/`;
-    const response = await api.get(url);
-    if (response.status >= 200 && response.status < 300) {
-      return { data: response.data, status: "success" };
-    } else return handleApiError(response);
-  } catch (error) {
-    return handleApiError(error);
+    const res = await api.get("/api/users/me/");
+    return handleResponse(res);
+  } catch (e) {
+    return handleApiError(e);
+  }
+};
+
+// Documents
+export const postBulkDocsAPI = async (payload: FormData) => {
+  try {
+    const res = await api.post("/core/documents/bulk-upload/", payload, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return handleResponse(res);
+  } catch (e) {
+    return handleApiError(e);
+  }
+};
+
+// Matches
+export const getMatchedLendersAlgoMatch = async (payload: {
+  smb_id: string;
+}) => {
+  try {
+    const res = await api.get(
+      `/core/matches/algorithmic-match/${payload.smb_id}/`
+    );
+    return handleResponse(res);
+  } catch (e) {
+    return handleApiError(e);
+  }
+};
+
+export const getChatSessionAPI = async (payload: { session_id: string }) => {
+  try {
+    const res = await api.get(`/core/chat-sessions/${payload.session_id}/`);
+    return handleResponse(res);
+  } catch (e) {
+    return handleApiError(e);
   }
 };
