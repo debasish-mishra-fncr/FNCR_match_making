@@ -7,11 +7,13 @@ import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { updateOnboarding } from "@/redux/onboardingSlice";
 import { updateChatBotState } from "@/redux/chatSlice";
 import { setTokens } from "@/app/utils/apiHelper";
+import { useRouter } from "next/navigation";
 
 const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   const dispatch = useAppDispatch();
   const session = useSession();
+  const router = useRouter();
 
   useEffect(() => {
     if (session?.data?.error === "RefreshAccessTokenError") {
@@ -28,6 +30,12 @@ const UserProvider = ({ children }: { children: React.ReactNode }) => {
           if (userData) {
             if (userData.smb) {
               dispatch(updateOnboarding({ id: Number(userData.smb) }));
+            }
+            if (
+              userData.onboarding_status === "COMPLETED" &&
+              pathname !== "/matches"
+            ) {
+              router.push("/matches");
             }
             // if (userData.lender) {
             //   dispatch(updateOnboarding({ id: Number(userData.lender) }));
