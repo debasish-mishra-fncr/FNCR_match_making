@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { updateOnboarding } from "@/redux/onboardingSlice";
 import { updateChatBotState } from "@/redux/chatSlice";
+import { setTokens } from "@/app/utils/apiHelper";
 
 const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
@@ -16,6 +17,10 @@ const UserProvider = ({ children }: { children: React.ReactNode }) => {
     const fetchUserData = async () => {
       if (session?.data?.accessToken) {
         try {
+          setTokens({
+            accessToken: session.data.accessToken as string,
+            refreshToken: session.data.refreshToken as string,
+          });
           const userData = await dispatch(fetchCurrentUserSlice()).unwrap();
           if (userData) {
             if (userData.smb) {
