@@ -42,24 +42,34 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
-      console.log("[JWT callback]", { token, user });
-
+      // First login
       if (user) {
-        const decoded = jwtDecode<{ exp: number }>(user.accessToken as string);
         return {
           ...token,
           accessToken: user.accessToken,
           refreshToken: user.refreshToken,
-          accessTokenExpires: decoded.exp * 1000,
+          accessTokenExpires:
+            jwtDecode<{ exp: number }>(user.accessToken).exp * 1000,
           raw: user.raw,
         };
       }
 
-      if (Date.now() < (token as JWT).accessTokenExpires) return token as JWT;
+      // Token still valid
+      if (Date.now() < token.accessTokenExpires) return token;
 
-      return refreshAccessToken(token.refreshToken as string);
+      // Token expired → try refresh
+      const refreshed = await refreshAccessToken(token.refreshToken as string);
+      if (refreshed.error) {
+        return { ...token, error: "RefreshAccessTokenError" }; // mark error
+      }
+
+      return {
+        ...token,
+        accessToken: refreshed.accessToken,
+        refreshToken: refreshed.refreshToken,
+        accessTokenExpires: refreshed.accessTokenExpires,
+      };
     },
-
     async session({ session, token }) {
       console.log("[Session callback]", { session, token });
       session.accessToken = token.accessToken as string;

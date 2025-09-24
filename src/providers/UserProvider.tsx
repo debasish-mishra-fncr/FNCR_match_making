@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { fetchCurrentUserSlice } from "@/redux/UserSlice";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { updateOnboarding } from "@/redux/onboardingSlice";
 import { updateChatBotState } from "@/redux/chatSlice";
@@ -14,6 +14,9 @@ const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const session = useSession();
 
   useEffect(() => {
+    if (session?.data?.error === "RefreshAccessTokenError") {
+      signOut();
+    }
     const fetchUserData = async () => {
       if (session?.data?.accessToken) {
         try {
