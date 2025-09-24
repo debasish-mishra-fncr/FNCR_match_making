@@ -5,17 +5,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FaChevronDown, FaChevronUp, FaCircle, FaGlobe } from "react-icons/fa";
 import { FiLogOut } from "react-icons/fi";
 import Image from "next/image";
-import { useDispatch, useSelector } from "react-redux";
-import { signOut } from "next-auth/react";
-import { AppDispatch, RootState } from "@/redux/store";
+import { useSelector } from "react-redux";
+import { signOut, useSession } from "next-auth/react";
+import { RootState, useAppDispatch } from "@/redux/store";
 import { fetchLenderMatch, Lender } from "@/redux/matchSlice";
 import {
   COLLATERAL_CODES,
   PRODUCT_CODES,
   INDUSTRIES,
 } from "@/types/oboardingTypes";
-import { getCurrentUserAPI } from "../utils/api";
-import { updateOnboarding } from "@/redux/onboardingSlice";
+import { useRouter } from "next/navigation";
 
 // Format money helper
 const formatMoney = (value?: number) => {
@@ -212,35 +211,48 @@ const LenderCard = ({ lender }: { lender: Lender }) => {
 };
 
 export default function Page() {
+  const {
+    user: currentUser,
+    loading: currentUserLoading,
+    error,
+  } = useSelector((state: RootState) => state.user);
   const [scrolled, setScrolled] = useState(false);
-  const dispatch = useDispatch<AppDispatch>();
   const chatbotState = useSelector((state: RootState) => state.chatbot);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-      try {
-        const res = await getCurrentUserAPI();
-        if (res.status === "success") {
-          const userId = res.data.smb;
-          dispatch(updateOnboarding({ id: userId }));
-          await dispatch(fetchLenderMatch({ smbId: String(userId) })).unwrap();
-        }
-      } catch (err) {
-        console.error("Error initializing data", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    init();
-  }, [dispatch]);
-
+  const router = useRouter();
+  const { status } = useSession({
+    required: true,
+    onUnauthenticated() {
+      router.push("/");
+    },
+  });
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    console.log("status", status);
+    console.log("currentUserLoading", currentUserLoading);
+    console.log("currentUser", currentUser);
+    const fetchMatches = async () => {
+      if (
+        status === "authenticated" &&
+        !currentUserLoading &&
+        currentUser?.smb
+      ) {
+        console.log("Fetching lender match");
+        try {
+          await dispatch(fetchLenderMatch({ smbId: currentUser.smb }));
+        } catch (err) {
+          console.error("Error fetching lender match:", err);
+        }
+      }
+    };
+
+    fetchMatches();
+  }, [status, dispatch, currentUserLoading, currentUser]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
@@ -272,7 +284,7 @@ export default function Page() {
 
       {/* Content */}
       <main className="max-w-6xl mx-auto p-6 lg:p-12">
-        {loading ? (
+        {status === "loading" || currentUserLoading ? (
           <div className="flex items-center justify-center">
             <div className="loader" />
           </div>
