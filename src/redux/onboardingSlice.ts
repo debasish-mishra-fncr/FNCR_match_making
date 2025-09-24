@@ -1,12 +1,6 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { getSmbInfo, postBulkDocsAPI, postSmbInfo } from "@/app/utils/api";
-
-export interface FundingAmount {
-  label: string;
-  min: number;
-  max: number;
-}
-
+import { FundingAmount, FileWithMetadata } from "@/types/oboardingTypes";
 export const FUNDING_AMOUNTS: FundingAmount[] = [
   { label: "$50K - $250K", min: 50000, max: 250000 },
   { label: "$250K - $1M", min: 250000, max: 1000000 },
@@ -15,15 +9,6 @@ export const FUNDING_AMOUNTS: FundingAmount[] = [
   { label: "$10M - $20M", min: 10000000, max: 20000000 },
   { label: "$20M+", min: 20000000, max: 9007199254740991 },
 ];
-
-export interface FileWithMetadata {
-  name: string;
-  file: File;
-  metadata: {
-    document_purpose: string;
-    description: string;
-  };
-}
 
 interface SMBOnboardingState {
   id: number | null;
@@ -180,7 +165,10 @@ export const submitSmbOnboardingData = createAsyncThunk(
     try {
       const state = getState() as { onboarding: SMBOnboardingState };
       const payload = buildSmbOnboardingPayload(state.onboarding);
-      const response = await postSmbInfo(state.onboarding.id || "", payload);
+      const response = await postSmbInfo({
+        id: state.onboarding.id || "",
+        rest: payload,
+      });
       if (response.status === "success") {
         resetOnboarding();
         return response.data;
@@ -210,10 +198,10 @@ export const completeAdditionalDataUploadSMBRedux = createAsyncThunk(
     // Early exit if no docs OR payload invalid
     if (isPayloadInvalid || !smbDocs || smbDocs.length === 0) {
       if (!isPayloadInvalid) {
-        const smbInfoResponse = await postSmbInfo(
-          state?.onboarding?.id || "",
-          payload
-        );
+        const smbInfoResponse = await postSmbInfo({
+          id: state?.onboarding?.id || "",
+          rest: payload,
+        });
         resetOnboarding();
         return { smbInfo: smbInfoResponse, bulkDocs: null };
       }
@@ -221,7 +209,10 @@ export const completeAdditionalDataUploadSMBRedux = createAsyncThunk(
       resetOnboarding();
       return { smbInfo: null, bulkDocs: null };
     }
-    const smbInfoPromise = postSmbInfo(state?.onboarding?.id || "", payload);
+    const smbInfoPromise = postSmbInfo({
+      id: state?.onboarding?.id || "",
+      rest: payload,
+    });
     const formData = new FormData();
     const fileMetadata: any[] = [];
 
@@ -273,7 +264,7 @@ const onboardingSlice = createSlice({
         state.smbDocs = [...state.smbDocs, ...smbDocs];
       }
 
-      Object.assign(state, rest); // update the rest normally
+      Object.assign(state, rest);
     },
 
     updateCurrentStep(state, action: PayloadAction<number>) {
@@ -291,7 +282,6 @@ const onboardingSlice = createSlice({
       })
       .addCase(fetchSmbInfo.fulfilled, (state, action) => {
         state.status = "succeeded";
-        // Update state with the fetched data
         if (action.payload) {
           state.id = action.payload?.id;
           state.name = action.payload?.name;
